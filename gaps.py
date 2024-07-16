@@ -59,6 +59,8 @@ def run_GAPS(tree, test_list):
     x += 1
   return response_list
 
+# example
+
 def train_GAPS(tree, train_dict: dict):
   #given a tree and a dictionary with gaps as keys and successes as values, trains the tree
   curr_tree = tree
