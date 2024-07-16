@@ -1,5 +1,5 @@
-import Tree as t
-import Nodes as n
+import tree as t
+import nodes as n
 import random
 import numpy as np
 import matplotlib.pyplot as plt
