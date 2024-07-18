@@ -8,12 +8,13 @@ import copy
 from datetime import datetime
 import os
 import ast
+from tqdm import tqdm
 
-TREE_MUTATION_ERROR = {}
-# ERROR_DICT = {}
-# OUTPUT_DICT = {}
-# GAP_OUTPUT = {}
-# TRAIN_ERROR = {}
+MUTATION_SIZE = 7
+# TREE_MUTATION_ERROR = {}
+TREE_MUTATION_ERROR = []
+TREE_BUILDING_TRAINING_ERROR_TRACE = [[] for _ in range(MUTATION_SIZE)]
+TREE_BUILDING_TESTING_ERROR_TRACE = [[] for _ in range(MUTATION_SIZE)]
 
 np.random.seed(1)
 random.seed(1)
@@ -59,22 +60,36 @@ def run_GAPS(tree, test_list):
     x += 1
   return response_list
 
-# example
+def run_single_GAP(tree, gap):
+  prob = tree.root.child.traverse_GAP(gap)
+  response = random.choices([0, 1], weights = (1 - prob, prob))
+  return response[0]
 
 def train_GAPS(tree, train_dict: dict):
   #given a tree and a dictionary with gaps as keys and successes as values, trains the tree
   curr_tree = tree
-  for key,val in train_dict.items():
-    gap = ast.literal_eval(key)
-    output = val
-    curr_tree.root.child.traverse_and_update(gap, output)
+  error_trace = []
+  for gap,output in train_dict.items():
+    gap_list = ast.literal_eval(gap)
+    response = curr_tree.root.child.traverse_and_update(gap_list, output)
+    # response = run_single_GAP(tree, gap_list)
+    error = np.abs(output - response)
+    error_trace.append(error)
+  return error_trace
+
+# def assess_error(test_tree_responses, ground_truth_responses):
+#   #given a trained tree and ground truth model, error of the trained tree is assessed and returned
+#   error = np.abs(sum(ground_truth_responses) - sum(test_tree_responses))
+#   return error
 
 def assess_error(test_tree_responses, ground_truth_responses):
   #given a trained tree and ground truth model, error of the trained tree is assessed and returned
-  error = np.abs(sum(ground_truth_responses)- sum(test_tree_responses))
-  # error = 0
-  # for gaps in test_tree.GAP_OUTPUT.keys():
-  #   error += np.abs(ground_truth.GAP_OUTPUT[gaps] - test_tree.GAP_OUTPUT[gaps])
+  error = 0
+  for x in range(len(test_tree_responses)):
+    error += np.abs(ground_truth_responses[x] - test_tree_responses[x])
+  # ground_truth_responses = np.array(ground_truth_responses)
+  # test_tree_responses = np.array(test_tree_responses)
+  # error = sum(np.abs(ground_truth_responses - test_tree_responses))
   return error
 
 def train_tree_with_mutations(start_tree, ground_truth_responses, train_set, validate_set):
@@ -82,29 +97,53 @@ def train_tree_with_mutations(start_tree, ground_truth_responses, train_set, val
   #performed better than the previous tree
   # trees_tested = 0
   successful_tree_trace = []
-  
   prev_tree = start_tree
   successful_tree_trace.append(prev_tree)  
-  train_GAPS(prev_tree, train_set)
+  start_tree_error_trace = train_GAPS(prev_tree, train_set)
+  TREE_BUILDING_TRAINING_ERROR_TRACE[0] = start_tree_error_trace
   prev_responses = run_GAPS(prev_tree, validate_set)
+  # TREE_BUILDING_TESTING_ERROR_TRACE[0] = prev_responses
   prev_tree_error = assess_error(prev_responses, ground_truth_responses)
+  TREE_MUTATION_ERROR.append(prev_tree_error)
   num_successful_mutations = 0
-  while num_successful_mutations < 5:
+  while num_successful_mutations < MUTATION_SIZE:
+    # print(f"successful mutations: {num_successful_mutations}")
     curr_tree = prev_tree.mutate()
-    train_GAPS(curr_tree, train_set)
+    curr_tree_train_error_trace = train_GAPS(curr_tree, train_set)
     curr_responses = run_GAPS(curr_tree, validate_set)
     curr_tree_error = assess_error(curr_responses, ground_truth_responses)
-    # print(f"prev tree error = {prev_tree_error}")
-    # print(f"curr tree error = {curr_tree_error}")
+    print(f"num successful mutations = {num_successful_mutations}")
+    print(f"prev tree error = {prev_tree_error}")
+    print(f"curr tree error = {curr_tree_error}")
     if curr_tree_error < prev_tree_error: 
       prev_tree = copy.deepcopy(curr_tree)
       prev_tree_error = curr_tree_error
       successful_tree_trace.append(prev_tree)
+      TREE_BUILDING_TRAINING_ERROR_TRACE[num_successful_mutations] = curr_tree_train_error_trace
       num_successful_mutations += 1
-      TREE_MUTATION_ERROR[num_successful_mutations] = curr_tree_error
-  return prev_tree
-   
-    
+      # TREE_MUTATION_ERROR[num_successful_mutations] = curr_tree_error
+      TREE_MUTATION_ERROR.append(curr_tree_error)
+  return curr_tree
+
+
+def running_average(data, window_size):
+  ra = np.empty(len(data))
+  for i in range(len(data)):
+    if i < window_size:
+      ra[i] = np.mean(data[:i+1])
+    else:
+      ra[i] = np.mean(data[i-window_size+1:i+1])
+  return ra
+
+def average(data):
+  avg = np.empty(len(data))
+  for i in range(len(data)):
+    avg[i] = np.mean(data[:i])
+  return avg
+
+  # cumulative_sum = np.cumsum(np.insert(data, 0, 0))
+  # return (cumulative_sum[window_size:] - cumulative_sum[:-window_size]) / float(window_size)
+
 
 #after making a list of all possible gap patterns, randomly selects 500 test
 #gaps and prints them out
@@ -112,93 +151,98 @@ binary_list = binary_num_list(10)
 test_list = []
 for x in range(0,1000):
   test_list.append(read_gap(random.choice(binary_list)))
-# print(test_list)
-
-
-#adds leafs to the decision tree
-leaf_list = []
-leaf6 = n.LeafNode(0.55)
-leaf_list.append(leaf6)
-leaf7 = n.LeafNode(0.65)
-leaf_list.append(leaf7)
-leaf8 = n.LeafNode(0.75)
-leaf_list.append(leaf8)
-leaf9 = n.LeafNode(0.85)
-leaf_list.append(leaf9)
-leaf10 = n.LeafNode(0.95)
-leaf_list.append(leaf10)
-leaf1 = n.LeafNode(0.05)
-leaf_list.append(leaf1)
-leaf = n.LeafNode(0.10)
-leaf_list.append(leaf)
-leaf2 = n.LeafNode(0.15)
-leaf_list.append(leaf2)
-leaf3 = n.LeafNode(0.25)
-leaf_list.append(leaf3)
-leaf4 = n.LeafNode(0.35)
-leaf_list.append(leaf4)
-leaf5 = n.LeafNode(0.45)
-leaf_list.append(leaf5)
 
 
 #Create, fill, and print tree
 print("ground truth: ")
 ground_truth = t.build_bald_tree(10, shuffle_nums=False)
 ground_truth = t.fill_tree_with_leaves(ground_truth, evenly_spaced=True)
-ground_truth.print2D(ground_truth.root.child)
-print("__________________________________________")
+# ground_truth.print2D(ground_truth.root.child)
+# print("__________________________________________")
 
 ground_truth_results = run_GAPS(ground_truth, test_list)
 
 test_tree = t.build_bald_tree(10, shuffle_nums=True)
 test_tree = t.fill_tree_with_leaves(test_tree, evenly_spaced=False)
-test_tree.print2D(test_tree.root.child)
-print("__________________________________________")
-
-
-train_gap_keys = random.sample(list(ground_truth.GAP_OUTPUT.keys()), 500)
-train_gap_dict = {key: ground_truth.GAP_OUTPUT[key] for key in train_gap_keys}
-# for key,val in train_gap_dict.items():
-#   print(f"key: {type(key)}, val: {val}")
-
-# train_GAPS(test_tree, train_gaps)
 # test_tree.print2D(test_tree.root.child)
+# print("__________________________________________")
 
+num_train_gaps = 500
+train_gap_keys = random.sample(list(ground_truth.GAP_OUTPUT.keys()), num_train_gaps)
+train_gap_dict = {key: ground_truth.GAP_OUTPUT[key] for key in train_gap_keys}
+
+
+
+num_test_gaps = 100
 validate_set = {}
-while len(validate_set) <= 100:
+while len(validate_set) <= num_test_gaps:
   new_gap = random.choice(list(ground_truth.GAP_OUTPUT.keys()))
   if new_gap not in train_gap_dict and new_gap not in validate_set:
     validate_set[new_gap] = ground_truth.GAP_OUTPUT[new_gap]
 
 validate_list = []
+ground_truth_validate_responses = []
 for key,val in validate_set.items():
     gap = ast.literal_eval(key)
     validate_list.append(gap)
+    ground_truth_validate_responses.append(val)
 
 
-final_tree = train_tree_with_mutations(test_tree, ground_truth_results, train_gap_dict, validate_list)
+
+
+
+# final_tree = train_GAPS(test_tree, train_gap_dict)
+final_tree = train_tree_with_mutations(test_tree, ground_truth_validate_responses, train_gap_dict, validate_list)
 final_tree.print2D(final_tree.root.child)
 
-for key,val in TREE_MUTATION_ERROR.items():
-  print(f"Mutation: {key} | Error: {val}")
+# for key,val in TREE_MUTATION_ERROR.items():
+#   print(f"Mutation: {key} | Error: {val}")
+for x in range(len(TREE_MUTATION_ERROR)):
+  if x == 0:
+    print(f"start tree error: {TREE_MUTATION_ERROR[x]}")
+  else:
+    print(f"mutation {x} error: {TREE_MUTATION_ERROR[x]}")
 
-p = 0
-# train_GAPS(test_tree, train_gaps)
-# test_tree.print2D(test_tree.root.child)
-
-# run_GAPS(test_tree, validate_set)
-# print(test_tree.OUTPUT_DICT)
-
-
-# test_tree = train_tree_with_mutations(test_tree, ground_truth, train_gaps, validate_list)
-
-# run_GAPS(test_tree,validate_list)
-# print(assess_error(test_tree, tree1))
-
-# test_tree = test_tree.mutate()
-# test_tree.print2D(test_tree.root.child)
+train_run_avg = []
+for traces in TREE_BUILDING_TRAINING_ERROR_TRACE:
+  trace_running_averages = []
+  # running_avg = running_average(traces, window_size=5)
+  avg = average(traces)
+  # trace_running_averages.append(running_avg)
+  trace_running_averages.append(avg)
+  train_run_avg.append(trace_running_averages)
 
 
+x_axis = np.arange(len(train_run_avg)* num_train_gaps)
+
+run_train_avg_flat = np.array([])
+for run_avg_i in train_run_avg:
+  run_avg_i_flat = np.concatenate(run_avg_i)
+  run_train_avg_flat = np.concatenate((run_train_avg_flat, run_avg_i_flat))
+
+plt.plot(x_axis, run_train_avg_flat)
+plt.xlabel("total number of gaps trained on")
+plt.ylabel("average training loss")
+plt.tight_layout()
+plt.savefig(os.path.join(results_dir_path, "mutation_training_error"))
+plt.clf()
+
+
+print(len(TREE_MUTATION_ERROR))
+x_axis = np.arange(
+  start=num_train_gaps-1,
+  stop=len(train_run_avg)*num_train_gaps,
+  step=num_train_gaps
+)
+x_axis = np.insert(x_axis, 0, 0)
+
+plt.plot(x_axis, TREE_MUTATION_ERROR, ls="--", c="red")
+plt.scatter(x_axis, TREE_MUTATION_ERROR, c="red")
+plt.xlabel("total number training GAPs")
+plt.ylabel("total validation loss")
+plt.tight_layout()
+plt.savefig(os.path.join(results_dir_path, "mutation_testing_error"))
+plt.clf()
 # x = np.array(list(results.keys()))
 # y = np.array([v[0] / v[1] for v in results.values()])
 # fig, ax = plt.subplots()
@@ -222,12 +266,3 @@ p = 0
 # plt.title('Error vs. Iteration')
 # # plt.savefig(os.path.join(results_dir_path, "error_vs_itr.png"))
 # plt.show()
-
-
-# ##create tree to train: 
-# train_tree = t.Tree(0, 10)
-# train_tree.create_tree_random(8)
-# for x in range(9):
-#   new_leaf = n.LeafNode()
-#   train_tree.root.child.add_node_in_order(new_leaf)
-# t.print2D(train_tree.root.child)
