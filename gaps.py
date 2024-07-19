@@ -10,11 +10,10 @@ import os
 import ast
 from tqdm import tqdm
 
-MUTATION_SIZE = 7
-# TREE_MUTATION_ERROR = {}
-TREE_MUTATION_ERROR = []
-TREE_BUILDING_TRAINING_ERROR_TRACE = [[] for _ in range(MUTATION_SIZE)]
-TREE_BUILDING_TESTING_ERROR_TRACE = [[] for _ in range(MUTATION_SIZE)]
+MUTATION_SIZE = 50
+
+TREE_MUTATION_TRAINING_ERROR = []
+TREE_MUTATION_VALIDATION_ERROR = []
 
 np.random.seed(1)
 random.seed(1)
@@ -62,68 +61,83 @@ def run_GAPS(tree, test_list):
 
 def run_single_GAP(tree, gap):
   prob = tree.root.child.traverse_GAP(gap)
-  response = random.choices([0, 1], weights = (1 - prob, prob))
-  return response[0]
+  # response = random.choices([0, 1], weights = (1 - prob, prob))
+  return prob
 
 def train_GAPS(tree, train_dict: dict):
   #given a tree and a dictionary with gaps as keys and successes as values, trains the tree
   curr_tree = tree
-  error_trace = []
   for gap,output in train_dict.items():
     gap_list = ast.literal_eval(gap)
-    response = curr_tree.root.child.traverse_and_update(gap_list, output)
-    # response = run_single_GAP(tree, gap_list)
-    error = np.abs(output - response)
-    error_trace.append(error)
-  return error_trace
+    curr_tree.root.child.traverse_and_update(gap_list, output)
 
-# def assess_error(test_tree_responses, ground_truth_responses):
-#   #given a trained tree and ground truth model, error of the trained tree is assessed and returned
-#   error = np.abs(sum(ground_truth_responses) - sum(test_tree_responses))
-#   return error
+
+def assess_training_error(trained_tree, ground_truth_tree, train_dict):
+  ground_truth_probs = []
+  trained_tree_probs = []
+  for gap in train_dict.keys():
+    gap_list = ast.literal_eval(gap)
+    ground_truth_pred = run_single_GAP(ground_truth_tree, gap_list)
+    ground_truth_probs.append(ground_truth_pred)
+    trained_tree_pred = run_single_GAP(trained_tree, gap_list)
+    trained_tree_probs.append(trained_tree_pred)
+  error = 0
+  for x in range(len(trained_tree_probs)):
+    error += np.abs(ground_truth_probs[x] - trained_tree_probs[x])
+  sample_size = len(train_dict.keys())
+  mean_error = error/sample_size
+  return mean_error
+
+
+def validate_and_return_error(trained_tree, ground_truth_tree, validate_list):
+  error = 0
+  gap_index = 0
+  for gap in validate_list:
+    ground_truth_pred = run_single_GAP(ground_truth_tree, validate_list[gap_index])
+    trained_tree_pred = run_single_GAP(trained_tree, validate_list[gap_index])
+    error += np.abs(ground_truth_pred - trained_tree_pred)
+    gap_index += 1
+  sample_size = len(validate_list)
+  mean_error = error/sample_size
+  return mean_error
+
 
 def assess_error(test_tree_responses, ground_truth_responses):
   #given a trained tree and ground truth model, error of the trained tree is assessed and returned
-  error = 0
-  for x in range(len(test_tree_responses)):
-    error += np.abs(ground_truth_responses[x] - test_tree_responses[x])
-  # ground_truth_responses = np.array(ground_truth_responses)
-  # test_tree_responses = np.array(test_tree_responses)
-  # error = sum(np.abs(ground_truth_responses - test_tree_responses))
+  error = np.abs(sum(ground_truth_responses) - sum(test_tree_responses))
   return error
 
-def train_tree_with_mutations(start_tree, ground_truth_responses, train_set, validate_set):
-  #Starting with a random tree and a ground truth model, this functions modifies trees until 10 trees are constructed, each of which
-  #performed better than the previous tree
-  # trees_tested = 0
+
+def train_tree_with_mutations(start_tree, ground_truth_tree, train_dict, validate_list):
   successful_tree_trace = []
   prev_tree = start_tree
-  successful_tree_trace.append(prev_tree)  
-  start_tree_error_trace = train_GAPS(prev_tree, train_set)
-  TREE_BUILDING_TRAINING_ERROR_TRACE[0] = start_tree_error_trace
-  prev_responses = run_GAPS(prev_tree, validate_set)
-  # TREE_BUILDING_TESTING_ERROR_TRACE[0] = prev_responses
-  prev_tree_error = assess_error(prev_responses, ground_truth_responses)
-  TREE_MUTATION_ERROR.append(prev_tree_error)
+  successful_tree_trace.append(prev_tree)
+
+  train_GAPS(prev_tree, train_dict)
+  prev_train_error = assess_training_error(prev_tree, ground_truth_tree, train_dict)
+  TREE_MUTATION_TRAINING_ERROR.append(prev_train_error)
+
+  prev_validation_error = validate_and_return_error(start_tree, ground_truth_tree, validate_list)
+  TREE_MUTATION_VALIDATION_ERROR.append(prev_validation_error)
+
   num_successful_mutations = 0
   while num_successful_mutations < MUTATION_SIZE:
-    # print(f"successful mutations: {num_successful_mutations}")
     curr_tree = prev_tree.mutate()
-    curr_tree_train_error_trace = train_GAPS(curr_tree, train_set)
-    curr_responses = run_GAPS(curr_tree, validate_set)
-    curr_tree_error = assess_error(curr_responses, ground_truth_responses)
-    print(f"num successful mutations = {num_successful_mutations}")
-    print(f"prev tree error = {prev_tree_error}")
-    print(f"curr tree error = {curr_tree_error}")
-    if curr_tree_error < prev_tree_error: 
+    train_GAPS(curr_tree, train_dict)
+    curr_train_error = assess_training_error(curr_tree, ground_truth_tree, train_dict)
+    curr_validation_error = validate_and_return_error(curr_tree, ground_truth_tree, validate_list)
+    print(f"current tree error = {curr_train_error}")
+    print(f"prev tree error = {prev_train_error}")
+    if curr_validation_error < prev_validation_error:
+      TREE_MUTATION_TRAINING_ERROR.append(curr_train_error)
+      TREE_MUTATION_VALIDATION_ERROR.append(curr_validation_error)
+
       prev_tree = copy.deepcopy(curr_tree)
-      prev_tree_error = curr_tree_error
+      prev_validation_error = curr_validation_error
       successful_tree_trace.append(prev_tree)
-      TREE_BUILDING_TRAINING_ERROR_TRACE[num_successful_mutations] = curr_tree_train_error_trace
-      num_successful_mutations += 1
-      # TREE_MUTATION_ERROR[num_successful_mutations] = curr_tree_error
-      TREE_MUTATION_ERROR.append(curr_tree_error)
-  return curr_tree
+      num_successful_mutations+=1
+
+  return prev_tree
 
 
 def running_average(data, window_size):
@@ -135,14 +149,12 @@ def running_average(data, window_size):
       ra[i] = np.mean(data[i-window_size+1:i+1])
   return ra
 
+
 def average(data):
   avg = np.empty(len(data))
   for i in range(len(data)):
     avg[i] = np.mean(data[:i])
   return avg
-
-  # cumulative_sum = np.cumsum(np.insert(data, 0, 0))
-  # return (cumulative_sum[window_size:] - cumulative_sum[:-window_size]) / float(window_size)
 
 
 #after making a list of all possible gap patterns, randomly selects 500 test
@@ -172,7 +184,6 @@ train_gap_keys = random.sample(list(ground_truth.GAP_OUTPUT.keys()), num_train_g
 train_gap_dict = {key: ground_truth.GAP_OUTPUT[key] for key in train_gap_keys}
 
 
-
 num_test_gaps = 100
 validate_set = {}
 while len(validate_set) <= num_test_gaps:
@@ -188,81 +199,33 @@ for key,val in validate_set.items():
     ground_truth_validate_responses.append(val)
 
 
-
-
-
 # final_tree = train_GAPS(test_tree, train_gap_dict)
-final_tree = train_tree_with_mutations(test_tree, ground_truth_validate_responses, train_gap_dict, validate_list)
+final_tree = train_tree_with_mutations(test_tree, ground_truth, train_gap_dict, validate_list)
 final_tree.print2D(final_tree.root.child)
 
-# for key,val in TREE_MUTATION_ERROR.items():
-#   print(f"Mutation: {key} | Error: {val}")
-for x in range(len(TREE_MUTATION_ERROR)):
-  if x == 0:
-    print(f"start tree error: {TREE_MUTATION_ERROR[x]}")
-  else:
-    print(f"mutation {x} error: {TREE_MUTATION_ERROR[x]}")
-
-train_run_avg = []
-for traces in TREE_BUILDING_TRAINING_ERROR_TRACE:
-  trace_running_averages = []
-  # running_avg = running_average(traces, window_size=5)
-  avg = average(traces)
-  # trace_running_averages.append(running_avg)
-  trace_running_averages.append(avg)
-  train_run_avg.append(trace_running_averages)
-
-
-x_axis = np.arange(len(train_run_avg)* num_train_gaps)
-
-run_train_avg_flat = np.array([])
-for run_avg_i in train_run_avg:
-  run_avg_i_flat = np.concatenate(run_avg_i)
-  run_train_avg_flat = np.concatenate((run_train_avg_flat, run_avg_i_flat))
-
-plt.plot(x_axis, run_train_avg_flat)
+x_axis = np.arange(
+  start=num_train_gaps-1,
+  stop=len(TREE_MUTATION_TRAINING_ERROR)*num_train_gaps,
+  step=num_train_gaps
+)
+plt.plot(x_axis, TREE_MUTATION_TRAINING_ERROR, ls="--", c="blue")
+plt.scatter(x_axis, TREE_MUTATION_TRAINING_ERROR, c="blue")
 plt.xlabel("total number of gaps trained on")
-plt.ylabel("average training loss")
+plt.ylabel("final training loss")
 plt.tight_layout()
 plt.savefig(os.path.join(results_dir_path, "mutation_training_error"))
 plt.clf()
 
 
-print(len(TREE_MUTATION_ERROR))
 x_axis = np.arange(
-  start=num_train_gaps-1,
-  stop=len(train_run_avg)*num_train_gaps,
-  step=num_train_gaps
+  start=num_test_gaps-1,
+  stop=len(TREE_MUTATION_VALIDATION_ERROR)*num_test_gaps,
+  step=num_test_gaps
 )
-x_axis = np.insert(x_axis, 0, 0)
-
-plt.plot(x_axis, TREE_MUTATION_ERROR, ls="--", c="red")
-plt.scatter(x_axis, TREE_MUTATION_ERROR, c="red")
-plt.xlabel("total number training GAPs")
-plt.ylabel("total validation loss")
+plt.plot(x_axis, TREE_MUTATION_VALIDATION_ERROR, ls="--", c="red")
+plt.scatter(x_axis, TREE_MUTATION_VALIDATION_ERROR, c="red")
+plt.xlabel("total number of gaps trained on")
+plt.ylabel("final validation loss")
 plt.tight_layout()
-plt.savefig(os.path.join(results_dir_path, "mutation_testing_error"))
+plt.savefig(os.path.join(results_dir_path, "mutation_validation_error"))
 plt.clf()
-# x = np.array(list(results.keys()))
-# y = np.array([v[0] / v[1] for v in results.values()])
-# fig, ax = plt.subplots()
-# ax.scatter(x, y)
-# plt.xlabel('p(lick)')
-# plt.ylabel('p̂(lick)')
-# b, a = np.polyfit(x, y, deg=1)
-# plt.plot(x, a + b * x)
-# plt.title('Simulated Prob vs. True Prob')
-# # plt.show()
-
-
-# #Print and graph model error
-# x = np.array(list(tree1.ERROR_DICT.keys())) 
-# y = np.array(list(tree1.ERROR_DICT.values()))
-# fig, ax = plt.subplots()
-# ax.scatter(x, y)
-# plt.xlabel('iteration')
-# plt.ylabel('error')
-# b, a = np.polyfit(x, y, deg=1)
-# plt.title('Error vs. Iteration')
-# # plt.savefig(os.path.join(results_dir_path, "error_vs_itr.png"))
-# plt.show()

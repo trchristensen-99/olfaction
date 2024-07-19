@@ -102,16 +102,15 @@ class Node:
     # print("traversing")
     #traverses tree with a gap/sucess combo and updates leaf probabilities
     if isinstance(self, LeafNode):
-      test_response = random.choices([0,1], weights = (1-self.prob, self.prob))[0]
+    #   test_response = random.choices([0,1], weights = (1-self.prob, self.prob))[0]
       self.update_probability(response)
-      return test_response
+      return self.prob
     # for some reason, this is reading the gap as a string
     if gap[self.number] == 0:
       return self.left.traverse_and_update(gap, response)
     elif gap[self.number] == 1:
       return self.right.traverse_and_update(gap, response)
-    else:
-      p = 0
+
 
   def add_node(self, location, new_node):
     #Manually adds a new node at a given location to the current node 

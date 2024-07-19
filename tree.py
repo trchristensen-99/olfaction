@@ -89,6 +89,8 @@ class Tree:
         return next_rule
     return self.pRULE(self, node, used_param)
   
+
+  
   # def draw_from_prior(self):
   #    first_node = n.Node()
   #    used_num = []
@@ -230,12 +232,9 @@ class Tree:
 
   def mutate(self):
     mutated_tree = copy.deepcopy(self)
-    random_mutation = [mutated_tree.grow, mutated_tree.prune, mutated_tree.change, mutated_tree.swap]
-    for x in range(0, 4):
-        chosen_mutation = random.choice(random_mutation)
-        # print(f"Mutation: {chosen_mutation.__name__}")
-        chosen_mutation()
-        # mutated_tree.print2D(mutated_tree.root.child) 
+    random_mutations = [mutated_tree.grow, mutated_tree.prune, mutated_tree.change, mutated_tree.swap]
+    chosen_mutation = random.choice(random_mutations)
+    chosen_mutation() 
     return mutated_tree
   
   def get_leaf_probs(self):
