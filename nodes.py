@@ -155,7 +155,7 @@ class LeafNode(Node):
     if response == 1:
       self.licks += 1
     self.total_trials += 1
-    self.prob = self.licks/self.total_trials
+    self.prob = round(self.licks/self.total_trials, 2)
  
   def __str__(self):
     return "leaf"

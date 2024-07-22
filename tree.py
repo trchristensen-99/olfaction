@@ -4,6 +4,7 @@ import copy
 import numpy as np
 
 class Tree:
+ 
   COUNT = [10]
 
   def __init__(self, glom_size, tree_id=0):
@@ -15,6 +16,8 @@ class Tree:
     self.glom_size = glom_size
     self.OUTPUT_DICT = {}
     self.GAP_OUTPUT = {}
+    self.gaps_ran = []
+    self.gaps_ran_responses = []
 
 
   def create_tree_in_order(self, num_nodes):
@@ -103,7 +106,7 @@ class Tree:
   #          new_node = n.Node()
   #    return first_node
 
-  def grow(self):
+  def grow(self, node_id = None):
     #randomly selects a terminal node and adds a new, randomly-constructed node
     available_nodes = []
     for node in self.GLOM_LIST:
@@ -145,7 +148,7 @@ class Tree:
     possible_prune_nodes = []
     for node in self.GLOM_LIST:
         if not isinstance(node, n.RootNode) and not isinstance(node, n.LeafNode):
-            if (isinstance(node.left, n.LeafNode) and isinstance(node.right, n.LeafNode)):
+            if (isinstance(node.left, n.LeafNode) and isinstance(node.right, n.LeafNode)) and not isinstance(node.parent, n.RootNode):
                 possible_prune_nodes.append(node)
     prune_node = random.choice(possible_prune_nodes)
     # print(f"pruning {prune_node}")
@@ -237,6 +240,7 @@ class Tree:
     chosen_mutation() 
     return mutated_tree
   
+
   def get_leaf_probs(self):
      leaf_probs = []
      for node in self.GLOM_LIST:
