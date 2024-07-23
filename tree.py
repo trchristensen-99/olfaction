@@ -14,15 +14,14 @@ class Tree:
     self.root = n.RootNode()
     self.GLOM_LIST.append(self.root)
     self.glom_size = glom_size
-    self.OUTPUT_DICT = {}
-    self.GAP_OUTPUT = {}
-    self.gaps_ran = []
-    self.gaps_ran_responses = []
 
 
   def create_tree_in_order(self, num_nodes):
-  #Creates a tree from a single node of a desired size where nodes are labeled
-  #in ascending numerical order
+    """
+      Creates an tree of a desired size in which internal nodes are given ordered values
+      Input: Self (Tree), num_nodes (int)
+      Output: No output, works in place on given tree
+    """
     for x in range(0,num_nodes):
       new_node = n.Node(x)
       if x == 0:
@@ -33,8 +32,11 @@ class Tree:
       self.GLOM_LIST.append(new_node)
 
   def create_tree_random(self, num_nodes):
-    #Creates a tree from a single node of a desired size where nodes are labeled
-    #in a random order
+    """
+      Creates a tree of a desired size in which internal nodes are given random values within the range of total nodes
+      Input: self (Tree), num_nodes(int)
+      Output: No output, works in place on given tree
+    """
     available_nodes = []
     i = 0
     for x in range(0,num_nodes):
@@ -52,6 +54,11 @@ class Tree:
       i+=1
   
   def print2DUtil(self, root, space):
+    """
+      Recursively prints out a tree given a defined spacing
+      Input: self (Tree), root (Node, LeafNode), space (int)
+      Output: None when no more further nodes exist
+    """
     if (root == None):
         return
     space += self.COUNT[0]
@@ -64,20 +71,25 @@ class Tree:
        print(root.prob)
     else:
        print(root.number)
-    # if root.number != 0:
-    #   print(root.number)
-    # else:
-    #   print(root.probability)
     if not isinstance(root, n.LeafNode):
       self.print2DUtil(root.left, space)
 
   def print2D(self, root):
+    """
+      Calls the print2DUtil function on a root node
+      Input: Self (Tree), root (Node)
+      Output: No output, prints node values
+    """
     self.print2DUtil(root, 0)
 
-  #Bayesian Cart Model Search
 
   def pSPLIT(self, node):
-    #Calculates the probability of a node splitting
+    """
+      Calculates the probability of a node splitting, considering defined alpha and beta values and node depth
+      Used to construct a tree by drawing from the prior      
+      Input: Self (Tree), node (Node)
+      Output: Split: 0=no split and 1=split (int)
+    """
     alpha = 0.5
     beta = 0.5
     p_split = alpha * (1 + node.depth()) ** -beta
@@ -85,6 +97,11 @@ class Tree:
 
 
   def pRULE(self, node, used_param = []):
+    """
+      Determines the probability of assigning a given value to a node once it has split
+      Input: self (Tree), node (Node), used_param ([int])
+      Output: Assigned node value (int)
+    """
     next_rule = random.choice([0, self.glom_size])
     if next_rule not in used_param:
         used_param.append(next_rule)
@@ -93,7 +110,6 @@ class Tree:
     return self.pRULE(self, node, used_param)
   
 
-  
   # def draw_from_prior(self):
   #    first_node = n.Node()
   #    used_num = []
@@ -107,14 +123,20 @@ class Tree:
   #    return first_node
 
   def grow(self, node_id = None):
-    #randomly selects a terminal node and adds a new, randomly-constructed node
+    """
+      From possible nodes (leaf nodes) selects a new node to grow. Then creates a new node replaces it with the
+      selected grow node. New node is given 2 empty leaves
+      Input: self (Tree), node_id (int)
+      Output: No output, grows tree in place
+    """
+    #select grow node
     available_nodes = []
     for node in self.GLOM_LIST:
-        # if not isinstance(node, n.RootNode) and (node.leaf or isinstance(node, n.LeafNode)):
         if isinstance(node, n.LeafNode) and node is not None:
             available_nodes.append(node)
     grow_node = random.choice(available_nodes)
-    # print(f"growing {grow_node.parent}")
+
+    #select value for grow node
     available_values = []
     for x in range(0, self.glom_size):
         for glom in self.GLOM_LIST:
@@ -122,11 +144,12 @@ class Tree:
             if not isinstance(glom, n.LeafNode) and glom.number == x:
                 in_list = True
         if in_list is False:
-            available_values.append(x)    
+            available_values.append(x) 
+
+    #create grow node and assign parents and children           
     new_node = n.Node(number = random.choice(available_values))
     self.GLOM_LIST.append(new_node)
     new_node.parent = grow_node.parent
-    # print(f"growing {grow_node.parent} with {new_node}")
     if new_node.parent.left == grow_node:
        new_node.parent.left = new_node
     elif new_node.parent.right == grow_node:
@@ -137,21 +160,24 @@ class Tree:
     right_new_leaf = n.LeafNode()
     new_node.add_node(1, right_new_leaf)
     self.GLOM_LIST.append(right_new_leaf)
-    
     self.GLOM_LIST.remove(grow_node)
     
 
-
-
   def prune(self):
-    #randomly selects a terminal node and removes it from the tree
+    """
+      Randomly selects a node within the tree to prune. Possible prune nodes are limited to nodes with 2 leaves and cannot be the root node
+      Input: Self (Tree)
+      Output: No output, prunes tree in place
+    """
+    #select prune node
     possible_prune_nodes = []
     for node in self.GLOM_LIST:
         if not isinstance(node, n.RootNode) and not isinstance(node, n.LeafNode):
             if (isinstance(node.left, n.LeafNode) and isinstance(node.right, n.LeafNode)) and not isinstance(node.parent, n.RootNode):
                 possible_prune_nodes.append(node)
     prune_node = random.choice(possible_prune_nodes)
-    # print(f"pruning {prune_node}")
+
+    #prune node and replace with a leaf
     if prune_node.parent.left == prune_node:
         new_leaf = n.LeafNode()
         prune_node.parent.left = new_leaf
@@ -162,8 +188,6 @@ class Tree:
         prune_node.parent.right = new_leaf
         new_leaf = prune_node.parent
         self.GLOM_LIST.append(new_leaf)
-    # prune_node.parent = None
-    # print(f"pruning {prune_node}")
     self.GLOM_LIST.remove(prune_node)
     if not isinstance(prune_node, n.LeafNode):
         if prune_node.left in self.GLOM_LIST:
@@ -172,18 +196,29 @@ class Tree:
             self.GLOM_LIST.remove(prune_node.right)
 
   def change(self):
-    #randomly changes the value of an internal node
+    """
+      Assigns a random internal node a new value
+      Input: self (Tree)
+      Output: No output, changes tree in place
+    """
+    #Randomly select change node
     available_change_nodes = []
     for node in self.GLOM_LIST:
        if not isinstance(node, n.LeafNode) and not isinstance(node, n.RootNode):
           available_change_nodes.append(node)
     change_node = random.choice(available_change_nodes)
-    # print(f"changing {change_node}")
+
+    #assign new value
     change_node.number = random.randint(0, self.glom_size-1)
 
 
   def swap(self):
-    #randomly swaps 2 internal nodes in a tree
+    """
+      Randomly swaps a parent/child pair (both internal ndoes) within the tree
+      Input: Self (Tree)
+      Output: No output, swaps nodes in place
+    """
+    #determine location of child to swap
     child_location = random.choice([0, 1]) #0 represents left, 1 represents right
     
     #looks for swappable nodes. Needs to be an internal node with another internal
@@ -228,12 +263,17 @@ class Tree:
         swap_child.left = temp_node.left
     
     #update parents
-
     swap_child.parent = temp_node.parent
     swap_node.parent = swap_child
 
 
   def mutate(self):
+    """
+      Creates a copy of given tree, and randomly selects one of four mutations to perform. Each mutation
+      has an equal probability of being picked. Mutation is performed on copy of the given tree. 
+      Input: self (Tree)
+      Output: mutated_tree (Tree)
+    """
     mutated_tree = copy.deepcopy(self)
     random_mutations = [mutated_tree.grow, mutated_tree.prune, mutated_tree.change, mutated_tree.swap]
     chosen_mutation = random.choice(random_mutations)
@@ -242,6 +282,11 @@ class Tree:
   
 
   def get_leaf_probs(self):
+     """
+      Creates a list of probabilities of all leaves in a tree
+      Input: self (Tree)
+      Output: leaf_prob (list)
+    """
      leaf_probs = []
      for node in self.GLOM_LIST:
         if isinstance(node, n.LeafNode):
@@ -251,9 +296,9 @@ class Tree:
 
 def add_to_tree(tree, item):
   """
-  Inputs:
-  Returns:
-    true if tree is full, false otherwise
+  Adds given node to a given tree in order
+  Inputs: tree (Tree), item (Node)
+  Returns: true if tree is full, false otherwise
   """
   tree.GLOM_LIST.append(item)
   if tree.root.child is None:
@@ -280,6 +325,11 @@ def add_to_tree(tree, item):
 
 
 def build_bald_tree(num_nodes, shuffle_nums=False):
+  """
+  Creates a tree with a given number of nodes. No LeafNode objects are added to the tree
+    Input: num_nodes (int), shuffle nums: False if node are in order, True otherwise (bool)
+    Output: created tree (Tree)
+  """
   tree = Tree(glom_size=10)
   num_order = [i for i in range(num_nodes)]
   if shuffle_nums:
@@ -290,6 +340,12 @@ def build_bald_tree(num_nodes, shuffle_nums=False):
   return tree
 
 def fill_tree_with_leaves(tree, evenly_spaced=False):
+  """
+    Given a bald tree, adds LeafNode objects to it until it is full  
+    Input: tree (Tree), evenly_spaced(bool): if True, leaves will be assinged probs evenly spaced between each other, 
+      otherwise, leaves will be assigned 0 as probs
+    Output:
+  """
   if tree.root.child is None:
     new_leaf = n.LeafNode(0)
     tree.root.child = new_leaf
@@ -329,7 +385,6 @@ def fill_tree_with_leaves(tree, evenly_spaced=False):
   return tree
   
 
-     
 if __name__ == "__main__":
   test_tree_ordered_even = build_bald_tree(10, shuffle_nums=False)
   test_tree_ordered_even = fill_tree_with_leaves(test_tree_ordered_even, evenly_spaced=True)
