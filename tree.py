@@ -15,44 +15,80 @@ class Tree:
     self.GLOM_LIST.append(self.root)
     self.glom_size = glom_size
 
+  def add_to_tree(self, item):
+    """
+    Adds given node to a given tree in order
+    Inputs: tree (Tree), item (Node)
+    Returns: true if tree is full, false otherwise
+    """
+    self.GLOM_LIST.append(item)
+    if self.root.child is None:
+      self.root.child = item
+      item.parent = self.root
+      return isinstance(item, n.LeafNode)
+    queue = [self.root.child]
+    while queue:
+      current = queue.pop(0)
+      if isinstance(current, n.LeafNode):
+          continue
+      if current.left is None:
+          current.left = item
+          item.parent = current
+          return False
+      elif current.right is None:
+          current.right = item
+          item.parent = current
+          return False
+      else: 
+          queue.append(current.left)
+          queue.append(current.right)
+    
 
-  def create_tree_in_order(self, num_nodes):
+  def fill_tree_with_leaves(self, evenly_spaced=False):
     """
-      Creates an tree of a desired size in which internal nodes are given ordered values
-      Input: Self (Tree), num_nodes (int)
-      Output: No output, works in place on given tree
+      Given a bald tree, adds LeafNode objects to it until it is full  
+      Input: tree (Tree), evenly_spaced(bool): if True, leaves will be assinged probs evenly spaced between each other, 
+        otherwise, leaves will be assigned 0 as probs
+      Output:
     """
-    for x in range(0,num_nodes):
-      new_node = n.Node(x)
-      if x == 0:
-       self.root.child = new_node
-       new_node.parent = self.root
+    if self.root.child is None:
+      new_leaf = n.LeafNode(0)
+      self.root.child = new_leaf
+      new_leaf.parent = self.root.child
+      self.GLOM_LIST.append(new_leaf)
+      return self
+    queue = [self.root.child]
+    leaf_count = 0
+    nodes_to_fill = []
+    # First pass: count existing leaves and find nodes to fill
+    while queue:
+      current = queue.pop(0)
+      if isinstance(current, n.LeafNode):
+          leaf_count += 1
+      elif isinstance(current, n.Node):
+          if current.left is None:
+              nodes_to_fill.append((current, 'left'))
+          else:
+              queue.append(current.left)
+          if current.right is None:
+              nodes_to_fill.append((current, 'right'))
+          else:
+              queue.append(current.right)
+    # Calculate total leaves after filling
+    total_leaves = leaf_count + len(nodes_to_fill)
+    # Second pass: fill empty slots with leaves
+    for i, (node, side) in enumerate(nodes_to_fill):
+      if evenly_spaced:
+          prob = i / (total_leaves - 1) if total_leaves > 1 else 0
       else:
-        self.root.child.add_node_in_order(new_node)
-      self.GLOM_LIST.append(new_node)
+          prob = 0
+      new_leaf = n.LeafNode(prob)
+      new_leaf.parent = node
+      setattr(node, side, new_leaf)
+      self.GLOM_LIST.append(new_leaf)
 
-  def create_tree_random(self, num_nodes):
-    """
-      Creates a tree of a desired size in which internal nodes are given random values within the range of total nodes
-      Input: self (Tree), num_nodes(int)
-      Output: No output, works in place on given tree
-    """
-    available_nodes = []
-    i = 0
-    for x in range(0,num_nodes):
-      available_nodes.append(x)
-    while len(available_nodes) != 0:
-      new_node_val = random.choice(available_nodes)
-      available_nodes.remove(new_node_val)
-      new_node = n.Node(new_node_val)
-      if i == 0:
-        self.root.child = new_node
-        new_node.parent =self.root
-      else:
-        self.root.child.add_node_in_order(new_node)
-      self.GLOM_LIST.append(new_node)
-      i+=1
-  
+    return self
+
   def print2DUtil(self, root, space):
     """
       Recursively prints out a tree given a defined spacing
@@ -292,102 +328,71 @@ class Tree:
         if isinstance(node, n.LeafNode):
            leaf_probs.append(node.number)
      return leaf_probs
+  
+  def run_tree_gaps(self, gap_list, leaf_prob = False):
+    """
+      Traverses a list of gaps through a tree and returns associated responses  
+      Input: tree (Tree), gap_list(list[list[int]])
+      Output: response_list (list[int])
+    """
+    response_list = []
+    for gap in gap_list:
+      if leaf_prob:
+        response_list.append(self.run_tree_single_gap(gap, leaf_prob=True))
+      else:
+        response_list.append(self.run_tree_single_gap(gap, leaf_prob=False))
+    return response_list
 
 
-def add_to_tree(tree, item):
-  """
-  Adds given node to a given tree in order
-  Inputs: tree (Tree), item (Node)
-  Returns: true if tree is full, false otherwise
-  """
-  tree.GLOM_LIST.append(item)
-  if tree.root.child is None:
-    tree.root.child = item
-    item.parent = tree.root
-    return isinstance(item, n.LeafNode)
-  queue = [tree.root.child]
-  while queue:
-    current = queue.pop(0)
-    if isinstance(current, n.LeafNode):
-        continue
-    if current.left is None:
-        current.left = item
-        item.parent = current
-        return False
-    elif current.right is None:
-        current.right = item
-        item.parent = current
-        return False
-    else: 
-        queue.append(current.left)
-        queue.append(current.right)
-    
+  def run_tree_single_gap(self, gap, leaf_prob = True):
+    """
+      Traverses a single gap through the tree and returns the associated leaf probability  
+      Input: tree (Tree), gap (list[int])
+      Output: prob (float)
+    """
+    prob = self.root.child.traverse_GAP(gap)
+    if leaf_prob:
+      return prob
+    else:
+      response = random.choices([0, 1], weights = (1-prob, prob))[0]
+      return response
 
+
+  def train_leaf_prob(self, train_gap_list, train_response_list):
+    """
+    Trains a tree with a list of GAPS and a list of associated responses
+    Input:
+      self: Tree object
+      train_gap_list: list[list[int]]
+      train_response_list: list[int] 
+    Returns:
+      No output, updates leaf probabilities in place
+    """
+    for x in range(len(train_gap_list)):
+      self.root.child.traverse_and_update(train_gap_list[x], train_response_list[x])
 
 def build_bald_tree(num_nodes, shuffle_nums=False):
-  """
-  Creates a tree with a given number of nodes. No LeafNode objects are added to the tree
-    Input: num_nodes (int), shuffle nums: False if node are in order, True otherwise (bool)
-    Output: created tree (Tree)
-  """
-  tree = Tree(glom_size=10)
-  num_order = [i for i in range(num_nodes)]
-  if shuffle_nums:
-    random.shuffle(num_order)
-  for num in num_order:
-     node = n.Node(num)
-     add_to_tree(tree, node)
-  return tree
-
-def fill_tree_with_leaves(tree, evenly_spaced=False):
-  """
-    Given a bald tree, adds LeafNode objects to it until it is full  
-    Input: tree (Tree), evenly_spaced(bool): if True, leaves will be assinged probs evenly spaced between each other, 
-      otherwise, leaves will be assigned 0 as probs
-    Output:
-  """
-  if tree.root.child is None:
-    new_leaf = n.LeafNode(0)
-    tree.root.child = new_leaf
-    new_leaf.parent = tree.root.child
-    tree.GLOM_LIST.append(new_leaf)
+    """
+    Creates a tree with a given number of nodes. No LeafNode objects are added to the tree
+      Input: num_nodes (int), shuffle nums: False if node are in order, True otherwise (bool)
+      Output: created tree (Tree)
+    """
+    tree = Tree(glom_size=10)
+    num_order = [i for i in range(num_nodes)]
+    if shuffle_nums:
+      random.shuffle(num_order)
+    for num in num_order:
+      node = n.Node(num)
+      tree.add_to_tree(node)
     return tree
-  queue = [tree.root.child]
-  leaf_count = 0
-  nodes_to_fill = []
-  # First pass: count existing leaves and find nodes to fill
-  while queue:
-    current = queue.pop(0)
-    if isinstance(current, n.LeafNode):
-        leaf_count += 1
-    elif isinstance(current, n.Node):
-        if current.left is None:
-            nodes_to_fill.append((current, 'left'))
-        else:
-            queue.append(current.left)
-        if current.right is None:
-            nodes_to_fill.append((current, 'right'))
-        else:
-            queue.append(current.right)
-  # Calculate total leaves after filling
-  total_leaves = leaf_count + len(nodes_to_fill)
-  # Second pass: fill empty slots with leaves
-  for i, (node, side) in enumerate(nodes_to_fill):
-    if evenly_spaced:
-        prob = i / (total_leaves - 1) if total_leaves > 1 else 0
-    else:
-        prob = 0
-    new_leaf = n.LeafNode(prob)
-    new_leaf.parent = node
-    setattr(node, side, new_leaf)
-    tree.GLOM_LIST.append(new_leaf)
 
-  return tree
+
+
   
 
 if __name__ == "__main__":
   test_tree_ordered_even = build_bald_tree(10, shuffle_nums=False)
-  test_tree_ordered_even = fill_tree_with_leaves(test_tree_ordered_even, evenly_spaced=True)
+  test_tree_ordered_even = test_tree_ordered_even.fill_tree_with_leaves(evenly_spaced=True)
   test_tree_ordered_even.print2D(test_tree_ordered_even.root.child)
   mutated_test_tree_ordered_even = test_tree_ordered_even.mutate()
   mutated_test_tree_ordered_even.print2D(mutated_test_tree_ordered_even.root.child)
@@ -395,11 +400,11 @@ if __name__ == "__main__":
 
 
   test_tree_shuffled_even = build_bald_tree(10, shuffle_nums=True)
-  test_tree_shuffled_even = fill_tree_with_leaves(test_tree_shuffled_even, evenly_spaced=True)
+  test_tree_shuffled_even = test_tree_shuffled_even.fill_tree_with_leaves(evenly_spaced=True)
   test_tree_ordered_zero = build_bald_tree(10, shuffle_nums=False)
-  test_tree_ordered_zero = fill_tree_with_leaves(test_tree_ordered_zero, evenly_spaced=False)
+  test_tree_ordered_zero = test_tree_ordered_zero.fill_tree_with_leaves(evenly_spaced=False)
   test_tree_shuffled_zero = build_bald_tree(10, shuffle_nums=True)
-  test_tree_shuffled_zero = fill_tree_with_leaves(test_tree_shuffled_zero, evenly_spaced=False)
+  test_tree_shuffled_zero = test_tree_shuffled_zero.fill_tree_with_leaves(evenly_spaced=False)
   p=0
   # test_tree.print2D(test_tree.root.child)   
      
