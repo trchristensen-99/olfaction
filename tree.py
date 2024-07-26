@@ -1,3 +1,4 @@
+import gaps
 import random
 import nodes as n
 import copy
@@ -370,6 +371,12 @@ class Tree:
     """
     for x in range(len(train_gap_list)):
       self.root.child.traverse_and_update(train_gap_list[x], train_response_list[x])
+
+  def get_probs_from_data(self, list_trn, list_val, list_tst):
+     probs_trn = self.run_tree_gaps(list_trn, leaf_prob=True)
+     probs_val = self.run_tree_gaps(list_val, leaf_prob=True)
+     probs_tst = self.run_tree_gaps(list_tst, leaf_prob=True)
+     return probs_trn, probs_val, probs_tst
 
 def build_bald_tree(num_nodes, shuffle_nums=False):
     """
