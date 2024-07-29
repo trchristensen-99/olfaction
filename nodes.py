@@ -1,5 +1,10 @@
+import random
+import numpy as np
 """
 """
+random_seed = 2
+np.random.seed(random_seed)
+random.seed(random_seed)
 
 class RootNode:
   def __init__(self, number = 1000):
@@ -129,14 +134,66 @@ class Node:
       Input: Self(Node, LeafNode)
       Output: Depth (int)
     """
-    if self.parent is None:
+    if self.parent is None or isinstance(self.parent, RootNode):
       return 0
     else:
       return 1 + self.parent.depth()
+
+  def replace_with_leaf(self):
+    new_leaf = LeafNode()
+    if not isinstance(self.parent, RootNode):
+      if self.parent.left == self:
+        self.parent.left = new_leaf
+        new_leaf.parent = self.parent
+      elif self.parent.right == self:
+        self.parent.right = new_leaf
+        new_leaf.parent = self.parent
+    else: 
+      self.parent.child = new_leaf
+      new_leaf.parent = self.parent
+
     
   def __str__(self):
     return f"Node {self.number}"
-  
+
+  def pSPLIT(self, tree, alpha=0.5, beta=0.5):
+    """
+      Calculates the probability of a node splitting, considering defined alpha and beta values and node depth
+      Used to construct a tree by drawing from the prior      
+      Input: Self (Tree), node (Node)
+      Output: Split: 0=no split and 1=split (int)
+    """
+    p_split = alpha * (1 + self.depth()) ** -beta
+    split = random.choices([0, 1], weights = (1-p_split, p_split))[0]
+    return split
+
+
+  def pRULE(self, possible_params, tree):
+    """
+      Determines the probability of assigning a given value to a node once it has split
+      Input: self (Tree), node (Node), used_param ([int])
+      Output: Assigned node value (int)
+    """
+    if not possible_params:
+      return
+    next_rule = random.choice(possible_params)
+    possible_params.remove(next_rule)
+    self.number = next_rule
+    return possible_params
+
+  def construct_nodes_from_prior(self, possible_params, tree, alpha, beta):
+    if not possible_params:
+      return
+    if self.pSPLIT(tree, alpha, beta) == 1:
+      updated_params = self.pRULE(possible_params, tree)
+      new_node_left = Node()
+      self.add_node(0, new_node_left)
+      new_node_right = Node()
+      self.add_node(1, new_node_right)
+      return new_node_left.construct_nodes_from_prior(updated_params, tree, alpha, beta), new_node_right.construct_nodes_from_prior(updated_params, tree, alpha, beta)
+    self.replace_with_leaf()
+    tree.num_terminal_nodes += 1
+    
 
 class LeafNode(Node):
   def __init__(self, init_prob = 0):
@@ -160,3 +217,12 @@ class LeafNode(Node):
 
   def __str__(self):
     return "leaf"
+
+
+# possible_params = [1,2,3,4,5,6,7,8,9]
+# start_node = Node(0)
+# start_root = RootNode()
+# start_root.child = start_node
+# start_node.parent = start_root
+# start_node.construct_nodes_from_prior(possible_params)
+# p=0

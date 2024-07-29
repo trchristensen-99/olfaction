@@ -3,6 +3,7 @@ import random
 import nodes as n
 import copy
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Tree:
  
@@ -15,6 +16,7 @@ class Tree:
     self.root = n.RootNode()
     self.GLOM_LIST.append(self.root)
     self.glom_size = glom_size
+    self.num_terminal_nodes = 0
 
   def add_to_tree(self, item):
     """
@@ -120,31 +122,36 @@ class Tree:
     self.print2DUtil(root, 0)
 
 
-  def pSPLIT(self, node):
-    """
-      Calculates the probability of a node splitting, considering defined alpha and beta values and node depth
-      Used to construct a tree by drawing from the prior      
-      Input: Self (Tree), node (Node)
-      Output: Split: 0=no split and 1=split (int)
-    """
-    alpha = 0.5
-    beta = 0.5
-    p_split = alpha * (1 + node.depth()) ** -beta
-    return random.choices([0, 1], weights = (1-p_split, p_split))
+  # def pSPLIT(self, node):
+  #   """
+  #     Calculates the probability of a node splitting, considering defined alpha and beta values and node depth
+  #     Used to construct a tree by drawing from the prior      
+  #     Input: Self (Tree), node (Node)
+  #     Output: Split: 0=no split and 1=split (int)
+  #   """
+  #   alpha = 0.5
+  #   beta = 0.5
+  #   p_split = alpha * (1 + node.depth()) ** -beta
+  #   return random.choices([0, 1], weights = (1-p_split, p_split))
 
 
-  def pRULE(self, node, used_param = []):
-    """
-      Determines the probability of assigning a given value to a node once it has split
-      Input: self (Tree), node (Node), used_param ([int])
-      Output: Assigned node value (int)
-    """
-    next_rule = random.choice([0, self.glom_size])
-    if next_rule not in used_param:
-        used_param.append(next_rule)
-        node.number = next_rule
-        return next_rule
-    return self.pRULE(self, node, used_param)
+  # def pRULE(self, node, used_param):
+  #   """
+  #     Determines the probability of assigning a given value to a node once it has split
+  #     Input: self (Tree), node (Node), used_param ([int])
+  #     Output: Assigned node value (int)
+  #   """
+  #   if not used_param:
+  #     return
+  #   next_rule = random.choice(used_param)
+  #   used_param.remove(next_rule)
+  #   node.number = next_rule
+  #   return used_param
+
+  # def construct_node_from prior(self, node, used_param):
+  #   if self.pSPLIT(node) == 1:
+  #     self.pRULE(node, used_param)
+
   
 
   # def draw_from_prior(self):
@@ -158,6 +165,8 @@ class Tree:
   #       while first_node.depth() < 7:
   #          new_node = n.Node()
   #    return first_node
+
+
 
   def grow(self, node_id = None):
     """
@@ -393,25 +402,78 @@ def build_bald_tree(num_nodes, shuffle_nums=False):
       tree.add_to_tree(node)
     return tree
 
-
+def construct_from_prior(glom_size, alpha, beta):
+  possible_params = [i for i in range(glom_size)]
+  tree = Tree(10)
+  start_node = n.Node()
+  tree.root.child = start_node
+  start_node.parent = tree.root
+  start_node.construct_nodes_from_prior(possible_params, tree, alpha, beta)
+  return tree
 
   
 
 if __name__ == "__main__":
-  test_tree_ordered_even = build_bald_tree(10, shuffle_nums=False)
-  test_tree_ordered_even = test_tree_ordered_even.fill_tree_with_leaves(evenly_spaced=True)
-  test_tree_ordered_even.print2D(test_tree_ordered_even.root.child)
-  mutated_test_tree_ordered_even = test_tree_ordered_even.mutate()
-  mutated_test_tree_ordered_even.print2D(mutated_test_tree_ordered_even.root.child)
+  # test_tree_ordered_even = build_bald_tree(10, shuffle_nums=False)
+  # test_tree_ordered_even = test_tree_ordered_even.fill_tree_with_leaves(evenly_spaced=True)
+  # test_tree_ordered_even.print2D(test_tree_ordered_even.root.child)
+  # mutated_test_tree_ordered_even = test_tree_ordered_even.mutate()
+  # mutated_test_tree_ordered_even.print2D(mutated_test_tree_ordered_even.root.child)
 
 
 
-  test_tree_shuffled_even = build_bald_tree(10, shuffle_nums=True)
-  test_tree_shuffled_even = test_tree_shuffled_even.fill_tree_with_leaves(evenly_spaced=True)
-  test_tree_ordered_zero = build_bald_tree(10, shuffle_nums=False)
-  test_tree_ordered_zero = test_tree_ordered_zero.fill_tree_with_leaves(evenly_spaced=False)
-  test_tree_shuffled_zero = build_bald_tree(10, shuffle_nums=True)
-  test_tree_shuffled_zero = test_tree_shuffled_zero.fill_tree_with_leaves(evenly_spaced=False)
+  # test_tree_shuffled_even = build_bald_tree(10, shuffle_nums=True)
+  # test_tree_shuffled_even = test_tree_shuffled_even.fill_tree_with_leaves(evenly_spaced=True)
+  # test_tree_ordered_zero = build_bald_tree(10, shuffle_nums=False)
+  # test_tree_ordered_zero = test_tree_ordered_zero.fill_tree_with_leaves(evenly_spaced=False)
+  # test_tree_shuffled_zero = build_bald_tree(10, shuffle_nums=True)
+  # test_tree_shuffled_zero = test_tree_shuffled_zero.fill_tree_with_leaves(evenly_spaced=False)
+  alpha_vals = [0.5, 0.95, 0.95, 0.95]
+  beta_vals = [0.5, 0.5, 1.0, 1.5]
+
+  bin_width = 1
+  fig, axs = plt.subplots(2, 2, figsize=(10,10))
+
+  plot_number = 0
+
+
+  for (alpha, beta) in zip(alpha_vals, beta_vals):
+    print(alpha)
+    print(beta)
+    total_num_terminal_nodes = []
+    for x in range (200000):
+      test_tree = construct_from_prior(30, alpha, beta)
+      total_num_terminal_nodes.append(test_tree.num_terminal_nodes)
+
+    mean = np.mean(total_num_terminal_nodes)
+    row_index = plot_number // 2
+    col_index = plot_number % 2  
+    
+    bins = np.arange(min(total_num_terminal_nodes), max(total_num_terminal_nodes) + bin_width, bin_width)
+    counts, bins, patches = plt.hist(total_num_terminal_nodes, bins=bins, density=False, alpha=0.7, color='blue', edgecolor='black')
+    probabilities = counts / counts.sum()
+    
+    axs[row_index, col_index].cla()  # Clear the current axes
+    axs[row_index, col_index].bar(bins[:-1], probabilities, width=bin_width, alpha=0.7, color='blue', edgecolor='black', align='edge')
+    axs[row_index, col_index].set_title(f'Alpha: {alpha}, Beta: {beta}, mean = {mean}', fontsize=10)
+    axs[row_index, col_index].set_xlabel('Number of Terminal Nodes', fontsize=10)
+    axs[row_index, col_index].set_ylabel('Probability', fontsize=10)
+    axs[row_index, col_index].set_xlim(0, 30)
+
+    plot_number += 1
+  # Add titles and labels
+  # plt.title('Histogram of Terminal Nodes')
+  # plt.xlabel('Number of Terminal Nodes')
+  # plt.ylabel('Probability')
+  
+
+
+  # Show plot
+  plt.tight_layout()
+  plt.savefig("test")
+  plt.clf()
+  
+
   p=0
   # test_tree.print2D(test_tree.root.child)   
      
