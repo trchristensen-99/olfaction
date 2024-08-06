@@ -168,7 +168,7 @@ class Tree:
 
 
 
-  def grow(self, node_id = None):
+  def grow(self, node_id = None, new_node_num = None):
     """
       From possible nodes (leaf nodes) selects a new node to grow. Then creates a new node replaces it with the
       selected grow node. New node is given 2 empty leaves
@@ -180,36 +180,40 @@ class Tree:
     for node in self.GLOM_LIST:
         if isinstance(node, n.LeafNode) and node is not None:
             available_nodes.append(node)
-    grow_node = random.choice(available_nodes)
-
+    if node_id:
+      grow_node = self.GLOM_LIST[node_id]
+    if available_nodes:
+      grow_node = random.choice(available_nodes)
     #select value for grow node
-    available_values = []
-    for x in range(0, self.glom_size):
-        for glom in self.GLOM_LIST:
-            in_list = False
-            if not isinstance(glom, n.LeafNode) and glom.number == x:
-                in_list = True
-        if in_list is False:
-            available_values.append(x) 
+      available_values = []
+      for x in range(0, self.glom_size):
+          for glom in self.GLOM_LIST:
+              in_list = False
+              if not isinstance(glom, n.LeafNode) and glom.number == x:
+                  in_list = True
+          if in_list is False:
+              available_values.append(x) 
 
-    #create grow node and assign parents and children           
-    new_node = n.Node(number = random.choice(available_values))
-    self.GLOM_LIST.append(new_node)
-    new_node.parent = grow_node.parent
-    if new_node.parent.left == grow_node:
-       new_node.parent.left = new_node
-    elif new_node.parent.right == grow_node:
-       new_node.parent.right = new_node
-    left_new_leaf = n.LeafNode()
-    new_node.add_node(0, left_new_leaf)
-    self.GLOM_LIST.append(left_new_leaf)
-    right_new_leaf = n.LeafNode()
-    new_node.add_node(1, right_new_leaf)
-    self.GLOM_LIST.append(right_new_leaf)
-    self.GLOM_LIST.remove(grow_node)
+      #create grow node and assign parents and children           
+      new_node = n.Node(number = random.choice(available_values))
+      if new_node_num:
+        new_node.number = new_node_num
+      self.GLOM_LIST.append(new_node)
+      new_node.parent = grow_node.parent
+      if new_node.parent.left == grow_node:
+        new_node.parent.left = new_node
+      elif new_node.parent.right == grow_node:
+        new_node.parent.right = new_node
+      left_new_leaf = n.LeafNode()
+      new_node.add_node(0, left_new_leaf)
+      self.GLOM_LIST.append(left_new_leaf)
+      right_new_leaf = n.LeafNode()
+      new_node.add_node(1, right_new_leaf)
+      self.GLOM_LIST.append(right_new_leaf)
+      self.GLOM_LIST.remove(grow_node)
     
 
-  def prune(self):
+  def prune(self, node_id=None):
     """
       Randomly selects a node within the tree to prune. Possible prune nodes are limited to nodes with 2 leaves and cannot be the root node
       Input: Self (Tree)
@@ -222,6 +226,8 @@ class Tree:
             if (isinstance(node.left, n.LeafNode) and isinstance(node.right, n.LeafNode)) and not isinstance(node.parent, n.RootNode):
                 possible_prune_nodes.append(node)
     prune_node = random.choice(possible_prune_nodes)
+    if node_id:
+      prune_node = self.GLOM_LIST[node_id]
 
     #prune node and replace with a leaf
     if prune_node.parent.left == prune_node:
@@ -241,7 +247,7 @@ class Tree:
         if prune_node.right in self.GLOM_LIST:
             self.GLOM_LIST.remove(prune_node.right)
 
-  def change(self):
+  def change(self, node_id=None, new_num = None):
     """
       Assigns a random internal node a new value
       Input: self (Tree)
@@ -253,12 +259,16 @@ class Tree:
        if not isinstance(node, n.LeafNode) and not isinstance(node, n.RootNode):
           available_change_nodes.append(node)
     change_node = random.choice(available_change_nodes)
+    if node_id:
+      change_node = self.GLOM_LIST[node_id]
 
     #assign new value
     change_node.number = random.randint(0, self.glom_size-1)
+    if new_num:
+      change_node.number = new_num
 
 
-  def swap(self):
+  def swap(self, parent_node_id=None, child_node_id=None):
     """
       Randomly swaps a parent/child pair (both internal ndoes) within the tree
       Input: Self (Tree)
@@ -284,6 +294,14 @@ class Tree:
     #stores 2 nodes to swap and creates a temporary node of the parent getting swapped
     swap_node = random.choice(swappable_nodes)
     swap_child = swap_node.left if child_location == 0 else swap_node.right
+    if parent_node_id:
+      swap_node = self.GLOM_LIST[parent_node_id]
+    if child_node_id:
+      swap_child = self.GLOM_LIST[child_node_id]
+      if swap_child.parent.right == swap_child:
+        child_location = 1
+      else:
+        child_location = 0
     # print(f"swapping {swap_node} with {swap_child}")
     temp_node = swap_node.create_temp_node()
 
@@ -336,8 +354,17 @@ class Tree:
      leaf_probs = []
      for node in self.GLOM_LIST:
         if isinstance(node, n.LeafNode):
-           leaf_probs.append(node.number)
+           leaf_probs.append(node.prob)
      return leaf_probs
+
+  def reset_leaf_probs(self):
+    for node in self.GLOM_LIST:
+      if isinstance(node, n.LeafNode):
+        node.licks = 0
+        node.total_trials = 0
+        node.prob = 0
+      
+        
   
   def run_tree_gaps(self, gap_list, leaf_prob = False):
     """
@@ -368,7 +395,7 @@ class Tree:
       return response
 
 
-  def train_leaf_prob(self, train_gap_list, train_response_list):
+  def train_leaf_prob(self, train_gap_list, train_response_list, test_list = None, test_responses = None):
     """
     Trains a tree with a list of GAPS and a list of associated responses
     Input:
@@ -378,8 +405,23 @@ class Tree:
     Returns:
       No output, updates leaf probabilities in place
     """
+    leaf_probs_trace = []
+    test_trace_mse = []
     for x in range(len(train_gap_list)):
       self.root.child.traverse_and_update(train_gap_list[x], train_response_list[x])
+      train_iteration_probs = self.get_leaf_probs()
+      if test_list: 
+        total_se = 0
+        for i in range(len(test_list)):
+          trained_tree_pred = self.run_tree_single_gap(test_list[i], leaf_prob=True)
+          iteration_se = (trained_tree_pred - test_responses[i])**2
+          total_se += iteration_se
+        mse = total_se/len(test_list)
+        test_trace_mse.append(mse)
+      leaf_probs_trace.append(train_iteration_probs)
+    if test_list:
+      return leaf_probs_trace, test_trace_mse
+    return leaf_probs_trace
 
   def get_probs_from_data(self, list_trn, list_val, list_tst):
      probs_trn = self.run_tree_gaps(list_trn, leaf_prob=True)

@@ -5,22 +5,13 @@ import matplotlib.pyplot as plt
 import copy
 from datetime import datetime
 import os
+import pickle
 
-
-MUTATION_SIZE = 1000
-
-TRAINING_SAMPLE_SIZE = 500
-VALIDATION_SAMPLE_SIZE = 100
-TESTING_SAMPLE_SIZE = 100
-
-TREE_MUTATION_TRAINING_ERROR = []
-TREE_MUTATION_VALIDATION_ERROR = []
-TREE_MUTATION_TESTING_ERROR = []
-UNSUCCESSFUL_MUTATION_COUNT = []
+GAP_LENGTH = 15
 
 np.random.seed(1)
 random.seed(1)
-# now = datetime.now().strftime("%Y%m%d_%H%M%S")
+now = datetime.now().strftime("%Y%m%d_%H%M%S")
 # results_dir_path = os.path.join("./results", now)
 # os.mkdir(results_dir_path)
 
@@ -38,11 +29,12 @@ def binary_num_list(x):
         return [pattern + [0] for pattern in smaller_patterns] + \
                [pattern + [1] for pattern in smaller_patterns]
     
-def split_data_set(data_set, train_size, val_size, test_size):
-   train_data = data_set[:train_size]
-   val_data = data_set[train_size:train_size+val_size]
-   test_data = data_set[train_size+val_size:train_size+val_size+test_size]
-   return train_data, val_data, test_data
+def split_data_set(data_set, leaf_train_size, tree_train_size, val_size, test_size):
+   leaf_train_data = data_set[:leaf_train_size]
+   tree_train_data = data_set[leaf_train_size:leaf_train_size+tree_train_size]
+   val_data = data_set[leaf_train_size+tree_train_size:leaf_train_size+tree_train_size+val_size]
+   test_data = data_set[leaf_train_size+tree_train_size+val_size:leaf_train_size+tree_train_size+val_size+test_size]
+   return leaf_train_data, tree_train_data, val_data, test_data
 
 
 # def assess_error(trained_tree: t.Tree, ground_truth_tree: t.Tree, gaps_list):
@@ -66,12 +58,19 @@ def split_data_set(data_set, train_size, val_size, test_size):
 #   return mean_error
 
 def assess_error(ground_truth_probs, test_tree_probs):
-   error = 0
+   total_se = 0
+   list_trial_error = []
    for x in range(len(ground_truth_probs)):
-      error += np.abs(ground_truth_probs[x] - test_tree_probs[x])
+      trial_se = (ground_truth_probs[x] - test_tree_probs[x])**2
+      total_se += trial_se
+      list_trial_error.append(trial_se)
    sample_size = len(ground_truth_probs)
-   mean_error = error/sample_size
-   return mean_error
+   mse = total_se/sample_size
+   std_dev = np.std(list_trial_error)
+   return mse, std_dev
+
+def assess_single_gap_error(ground_truth_prob, test_tree_prob):
+  return (ground_truth_prob - test_tree_prob)**2
 
 def running_average(data, window_size):
   """
@@ -113,3 +112,8 @@ def has_duplicates(lst):
         duplicates: bool
     """
     return len(lst) != len(set(tuple(x) if isinstance(x, list) else x for x in lst))
+
+# if __name__ == "__main__":
+#   full_data_set = binary_num_list(GAP_LENGTH)
+#   split_data_sets = split_data_set(full_data_set, 500, 100, 100, 100)
+#   save_lists_to_file(split_data_sets, "synthetic_gap_data.pkl")
