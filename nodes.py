@@ -1,12 +1,19 @@
 import random
-import numpy as np
+
 """
+Contains RootNode, Node, and LeafNode classes. To be used to construct trees. 
 """
-random_seed = 2
-np.random.seed(random_seed)
-random.seed(random_seed)
+
 
 class RootNode:
+  """
+    Represents the root node of a tree structure.
+
+    Attributes:
+        number (int): A numerical value associated with the root node, default is 1000.
+        child: Reference to the child node, initially None.
+        parent: Reference to the parent node, always None for a root node.
+  """
   def __init__(self, number = 1000):
     self.number = number
     self.child = None
@@ -17,12 +24,32 @@ class RootNode:
     return "root"
 
 
-#Node Class
-#Functions include __init__() - intializes object, height() - determines height
-#of node, full()- determines if a specific node is full, add_node(new_node) -
-#adds a new node to the node it is called on, traverse_GAP(GAP) - given a GAP,
-#traverses from that node,
 class Node:
+  """
+    Represents an internal node in a tree structure.
+
+    Node class holds methods for tree manipulation, traversal, and probability calculations.
+
+    Attributes:
+        left: Reference to the left child node, initially None.
+        right: Reference to the right child node, initially None.
+        parent: Reference to the parent node, initially None.
+        number (int): Integer representation of Node value.
+
+    Methods:
+        height(): Calculates the height of node.
+        full(): Determines if tree below node is full.
+        traverse_GAP(gap): Traverses the tree based on a given GAP.
+        traverse_and_update(gap, response): Traverses the tree and updates leaf probabilities.
+        add_node(location, new_node): Adds a new child node at a given location.
+        create_temp_node(): Creates a temporary copy of this node.
+        depth(): Calculates the depth of node.
+        replace_with_leaf(): Replaces Node object with a LeafNode object.
+        pSPLIT(tree, alpha, beta): Calculates the probability of this node splitting.
+        pRULE(possible_params, tree): Assigns a value to this node from possible parameters.
+        construct_nodes_from_prior(possible_params, tree, alpha, beta): Constructs child nodes based on pSPLIT and pRULE.
+  """
+
   def __init__(self, number = 0):
     self.left = None
     self.right = None
@@ -140,6 +167,14 @@ class Node:
       return 1 + self.parent.depth()
 
   def replace_with_leaf(self):
+    """
+    Converts node object into a leaf. To be used for building tree, if a node doesnt split
+    it is turned into a leaf. 
+    Input:
+      self: Node
+    Output: 
+      No ouput, modifies in place
+    """
     new_leaf = LeafNode()
     if not isinstance(self.parent, RootNode):
       if self.parent.left == self:
@@ -168,11 +203,14 @@ class Node:
     return split
 
 
-  def pRULE(self, possible_params, tree):
+  def pRULE(self, possible_params):
     """
       Determines the probability of assigning a given value to a node once it has split
-      Input: self (Tree), node (Node), used_param ([int])
-      Output: Assigned node value (int)
+      Input: 
+        Self: Node, 
+        used_param [int]
+      Output: 
+        Assigned node value (int)
     """
     if not possible_params:
       return
@@ -182,6 +220,15 @@ class Node:
     return possible_params
 
   def construct_nodes_from_prior(self, possible_params, tree, alpha, beta):
+    """
+      Constructs a tree via probability of splitting and rule assignment probabilites
+      Inputs:
+        Self: Node
+        possible_params: list[int]
+        tree: Tree
+        alpha: float < 1
+        beta: float >= 0
+    """
     if not possible_params:
       return
     if self.pSPLIT(tree, alpha, beta) == 1:
@@ -196,6 +243,19 @@ class Node:
     
 
 class LeafNode(Node):
+  """
+    Represents a leaf node in a tree structure.
+    This class inherits from Node, but has no children and value is a probability rather than glom representation.
+
+    Attributes:
+        parent (Node, RootNode): Parent reference, initially None.
+        licks (int): Lick count, initially 0.
+        total_trials (int): Total number of trials, initially 0.
+        prob (float): Probability associated with this leaf node, initially set to init_prob.
+
+    Methods:
+        update_probability(response): Updates the probability based on a new behavioral response.
+    """
   def __init__(self, init_prob = 0):
     self.parent = None
     self.licks = 0
@@ -217,12 +277,3 @@ class LeafNode(Node):
 
   def __str__(self):
     return "leaf"
-
-
-# possible_params = [1,2,3,4,5,6,7,8,9]
-# start_node = Node(0)
-# start_root = RootNode()
-# start_root.child = start_node
-# start_node.parent = start_root
-# start_node.construct_nodes_from_prior(possible_params)
-# p=0

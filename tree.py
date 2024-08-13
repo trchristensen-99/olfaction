@@ -10,7 +10,9 @@ class Tree:
   COUNT = [10]
 
   def __init__(self, glom_size, tree_id=0):
-    #Initializes a tree with a root node
+    """
+    Initializes a tree with a root node
+    """
     self.GLOM_LIST = []
     self.tree_id = tree_id
     self.root = n.RootNode()
@@ -120,52 +122,6 @@ class Tree:
       Output: No output, prints node values
     """
     self.print2DUtil(root, 0)
-
-
-  # def pSPLIT(self, node):
-  #   """
-  #     Calculates the probability of a node splitting, considering defined alpha and beta values and node depth
-  #     Used to construct a tree by drawing from the prior      
-  #     Input: Self (Tree), node (Node)
-  #     Output: Split: 0=no split and 1=split (int)
-  #   """
-  #   alpha = 0.5
-  #   beta = 0.5
-  #   p_split = alpha * (1 + node.depth()) ** -beta
-  #   return random.choices([0, 1], weights = (1-p_split, p_split))
-
-
-  # def pRULE(self, node, used_param):
-  #   """
-  #     Determines the probability of assigning a given value to a node once it has split
-  #     Input: self (Tree), node (Node), used_param ([int])
-  #     Output: Assigned node value (int)
-  #   """
-  #   if not used_param:
-  #     return
-  #   next_rule = random.choice(used_param)
-  #   used_param.remove(next_rule)
-  #   node.number = next_rule
-  #   return used_param
-
-  # def construct_node_from prior(self, node, used_param):
-  #   if self.pSPLIT(node) == 1:
-  #     self.pRULE(node, used_param)
-
-  
-
-  # def draw_from_prior(self):
-  #    first_node = n.Node()
-  #    used_num = []
-  #    if len(self.GLOM_LIST) == 1:
-  #     self.pRULE(first_node)
-  #     self.root.child = first_node
-  #     used_num.append(first_node.number)
-  #    else:
-  #       while first_node.depth() < 7:
-  #          new_node = n.Node()
-  #    return first_node
-
 
 
   def grow(self, node_id = None, new_node_num = None):
@@ -358,13 +314,19 @@ class Tree:
      return leaf_probs
 
   def reset_leaf_probs(self):
+    """
+    Resets all laf probabilities in a given tree to 0
+    Input:
+      self: Tree
+    Output:
+      None, changes in place
+    """
     for node in self.GLOM_LIST:
       if isinstance(node, n.LeafNode):
         node.licks = 0
         node.total_trials = 0
         node.prob = 0
       
-        
   
   def run_tree_gaps(self, gap_list, leaf_prob = False):
     """
@@ -424,6 +386,18 @@ class Tree:
     return leaf_probs_trace
 
   def get_probs_from_data(self, list_trn, list_val, list_tst):
+    """
+    Given a different GAP data sets, traverses the ground truth tree to get probabilities for a given gap
+    Inputs:
+      self: Tree
+      list_trn: [GAPs]
+      list_val: [GAPs]
+      list_tst: [GAPs]
+    Outputs:
+      probs_trn: [float]
+      probs_val: [float]
+      probs_tst: [float]
+    """
      probs_trn = self.run_tree_gaps(list_trn, leaf_prob=True)
      probs_val = self.run_tree_gaps(list_val, leaf_prob=True)
      probs_tst = self.run_tree_gaps(list_tst, leaf_prob=True)
@@ -445,6 +419,16 @@ def build_bald_tree(num_nodes, shuffle_nums=False):
     return tree
 
 def construct_from_prior(glom_size, alpha, beta):
+  """
+  Constructs a random intial tree based on methods from McCulloch et al (1998).
+  Used as a wrapper function for tree.constructed_nodes_from_prior()
+  Inputs: 
+    glom_size: int
+    alpha: float < 1
+    beta: float >= 0
+  Outputs:
+    tree: initial tree , Tree
+  """
   possible_params = [i for i in range(glom_size)]
   tree = Tree(10)
   start_node = n.Node()
@@ -456,20 +440,6 @@ def construct_from_prior(glom_size, alpha, beta):
   
 
 if __name__ == "__main__":
-  # test_tree_ordered_even = build_bald_tree(10, shuffle_nums=False)
-  # test_tree_ordered_even = test_tree_ordered_even.fill_tree_with_leaves(evenly_spaced=True)
-  # test_tree_ordered_even.print2D(test_tree_ordered_even.root.child)
-  # mutated_test_tree_ordered_even = test_tree_ordered_even.mutate()
-  # mutated_test_tree_ordered_even.print2D(mutated_test_tree_ordered_even.root.child)
-
-
-
-  # test_tree_shuffled_even = build_bald_tree(10, shuffle_nums=True)
-  # test_tree_shuffled_even = test_tree_shuffled_even.fill_tree_with_leaves(evenly_spaced=True)
-  # test_tree_ordered_zero = build_bald_tree(10, shuffle_nums=False)
-  # test_tree_ordered_zero = test_tree_ordered_zero.fill_tree_with_leaves(evenly_spaced=False)
-  # test_tree_shuffled_zero = build_bald_tree(10, shuffle_nums=True)
-  # test_tree_shuffled_zero = test_tree_shuffled_zero.fill_tree_with_leaves(evenly_spaced=False)
   alpha_vals = [0.5, 0.95, 0.95, 0.95]
   beta_vals = [0.5, 0.5, 1.0, 1.5]
 
@@ -503,21 +473,17 @@ if __name__ == "__main__":
     axs[row_index, col_index].set_xlim(0, 30)
 
     plot_number += 1
-  # Add titles and labels
-  # plt.title('Histogram of Terminal Nodes')
-  # plt.xlabel('Number of Terminal Nodes')
-  # plt.ylabel('Probability')
+
+    plt.title('Histogram of Terminal Nodes')
+    plt.xlabel('Number of Terminal Nodes')
+    plt.ylabel('Probability')
   
 
 
-  # Show plot
-  plt.tight_layout()
-  plt.savefig("test")
-  plt.clf()
-  
-
-  p=0
-  # test_tree.print2D(test_tree.root.child)   
+    # Show plot
+    plt.tight_layout()
+    plt.savefig("test")
+    plt.clf()
      
 
     
