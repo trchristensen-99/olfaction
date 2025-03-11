@@ -19,12 +19,15 @@ Given glomerulus activation patterns, this decision tree model outputs the predi
 nodes.py:
   - Defines node classes to be used in constructing a tree (RootNode, Node, LeafNode)
   - Includes functions to traverse gaps, add nodes, update node values, etc.
+
 tree.py:
   - Uses nodes.py to construct a binary decision tree.
   - Includes functions to construct trees, mutate tree structure, run data, etc.
+
 gaps.py:
   - Used to create synthetic GAPs
   - Includes funtions to generate GAPs, assess GAP errors, split GAP dataset, etc.
+
 train.py:
   - Model class, holds functins to mutate trees in 3 different approaches as well as ensemble function.
   - Includes single greeedy mutation approach, greedy pool mutation approach, chain mutation approach, and ensemble. 
