@@ -3,7 +3,7 @@ import gaps
 import pickle
 
 def save_lists_to_file(lists, file_name):
-   """
+    """
     Inputs:
         lists = []
         file_name = string - name of file
