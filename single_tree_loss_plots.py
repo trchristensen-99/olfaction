@@ -1,6 +1,6 @@
-from .. import tree as t
-from .. import gaps
-from .. import train
+import tree as t
+import gaps
+import train
 import random
 import numpy as np
 import matplotlib
@@ -15,8 +15,11 @@ random_seed = 2
 np.random.seed(random_seed)
 random.seed(random_seed)
 now = datetime.now().strftime("%Y%m%d_%H%M%S")
-results_dir_path = os.path.join("./results", now)
-os.mkdir(results_dir_path)
+results_dir = "./results"
+if not os.path.exists(results_dir):
+    os.makedirs(results_dir)
+    results_dir = os.path.join(results_dir, now)
+    os.mkdir(results_dir)
 
 def save_lists_to_file(lists, file_name):
     with open(file_name, 'wb') as file:
@@ -29,9 +32,9 @@ def load_gaps_from_file(file_name):
 if __name__ == "__main__":
 
     #load and create testing data
-    data_gaps = load_gaps_from_file("../synthetic_gap_data.pkl")
+    data_gaps = load_gaps_from_file("./synthetic_gap_data.pkl")
     gaps_tree_trn, gaps_val, gaps_tst = data_gaps[1], data_gaps[2], data_gaps[3]
-    leaf_train_data = load_gaps_from_file("../leaf_training_data.pkl")
+    leaf_train_data = load_gaps_from_file("./leaf_training_data.pkl")
     gaps_leaf_trn, responses_leaf_trn = leaf_train_data[0], leaf_train_data[1]
 
     #Create ground truth responses and run gaps
@@ -56,7 +59,7 @@ if __name__ == "__main__":
         greedy_mutation_meanerr_tst.append(greedy_tree_mutation_testing_error[x][0])
 
     #Train pool model
-    pool_final_tree, pool_tree_mutation_training_error, pool_tree_mutation_validation_error, pool_tree_mutation_testing_error, pool_unsuccessful_mutation_count = train.pool_mutations(pool_test_tree, ground_truth, gaps_leaf_trn,responses_leaf_trn, gaps_tree_trn, gaps_val, gaps_tst)
+    pool_final_tree, pool_tree_mutation_training_error, pool_tree_mutation_validation_error, pool_tree_mutation_testing_error, pool_unsuccessful_mutation_count, pool_tree_probs_trn, pool_tree_probs_val, pool_tree_probs_tst = train.pool_mutations(pool_test_tree, ground_truth, gaps_leaf_trn,responses_leaf_trn, gaps_tree_trn, gaps_val, gaps_tst)
 
     #Store pool errors
     pool_mutation_meanerr_trn = []
@@ -68,7 +71,7 @@ if __name__ == "__main__":
         pool_mutation_meanerr_tst.append(pool_tree_mutation_testing_error[x][0])
 
     #Train chain model
-    chain_final_tree, chain_tree_mutation_training_error, chain_tree_mutation_validation_error, chain_tree_mutation_testing_error, chain_unsuccessful_mutation_count = train.chain_mutations(chain_test_tree, ground_truth, leaf_train_data,leaf_training_responses, tree_train_data, val_data, test_data)
+    chain_final_tree, chain_tree_mutation_training_error, chain_tree_mutation_validation_error, chain_tree_mutation_testing_error, chain_unsuccessful_mutation_count = train.chain_mutations(chain_test_tree, ground_truth, leaf_train_data, responses_leaf_trn, gaps_tree_trn, gaps_val, gaps_tst)
 
     #Store chain errors
     chain_mutation_meanerr_trn = []
@@ -80,7 +83,9 @@ if __name__ == "__main__":
         chain_mutation_meanerr_tst.append(chain_tree_mutation_testing_error[x][0])
 
     #plot greedy loss plot along with unsuccessful mutation count
-    x_axis = np.arange(len(greedy_tree_mutation_training_error))
+    fig, axs_big = plt.subplots(3, 2, figsize=(15, 15))
+    plt.subplots_adjust(hspace=0.4, wspace=0.3)
+    x_axis = np.arange(len(greedy_mutation_meanerr_trn))
     axs_big[0,0].plot(x_axis, greedy_mutation_meanerr_trn, c="blue", label="Training")
     axs_big[0,0].plot(x_axis, greedy_mutation_meanerr_val, ls="--", c="red", label="Validation")
     axs_big[0,0].plot(x_axis, greedy_mutation_meanerr_tst, ls="--", c="green", label="Testing")
@@ -132,6 +137,6 @@ if __name__ == "__main__":
     axs_big[2,1].set_title('Chain Mutations Search Efficiency')
 
     plt.tight_layout()
-    plt.savefig(os.path.join(results_dir_path, "approaches_performance.pdf"), format='pdf', dpi=300, bbox_inches='tight', pad_inches=0.1)
+    plt.savefig(os.path.join(results_dir, "approaches_performance.pdf"), format='pdf', dpi=300, bbox_inches='tight', pad_inches=0.1)
     plt.close()
     plt.clf()

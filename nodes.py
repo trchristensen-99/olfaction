@@ -203,7 +203,7 @@ class Node:
     return split
 
 
-  def pRULE(self, possible_params):
+  def pRULE(self, possible_params, tree):
     """
       Determines the probability of assigning a given value to a node once it has split
       Input: 

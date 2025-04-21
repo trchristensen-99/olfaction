@@ -1,4 +1,4 @@
-from .. import gaps
+import gaps
 import pickle
 import random
 import numpy as np

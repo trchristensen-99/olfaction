@@ -181,6 +181,8 @@ class Tree:
         if not isinstance(node, n.RootNode) and not isinstance(node, n.LeafNode):
             if (isinstance(node.left, n.LeafNode) and isinstance(node.right, n.LeafNode)) and not isinstance(node.parent, n.RootNode):
                 possible_prune_nodes.append(node)
+    if not possible_prune_nodes:  # If no valid nodes to prune, return without doing anything
+      return
     prune_node = random.choice(possible_prune_nodes)
     if node_id:
       prune_node = self.GLOM_LIST[node_id]
@@ -214,6 +216,11 @@ class Tree:
     for node in self.GLOM_LIST:
        if not isinstance(node, n.LeafNode) and not isinstance(node, n.RootNode):
           available_change_nodes.append(node)
+
+        # If no nodes available to change, try to grow a new node
+    if not available_change_nodes:
+        self.grow()
+        return
     change_node = random.choice(available_change_nodes)
     if node_id:
       change_node = self.GLOM_LIST[node_id]
@@ -398,10 +405,10 @@ class Tree:
       probs_val: [float]
       probs_tst: [float]
     """
-     probs_trn = self.run_tree_gaps(list_trn, leaf_prob=True)
-     probs_val = self.run_tree_gaps(list_val, leaf_prob=True)
-     probs_tst = self.run_tree_gaps(list_tst, leaf_prob=True)
-     return probs_trn, probs_val, probs_tst
+    probs_trn = self.run_tree_gaps(list_trn, leaf_prob=True)
+    probs_val = self.run_tree_gaps(list_val, leaf_prob=True)
+    probs_tst = self.run_tree_gaps(list_tst, leaf_prob=True)
+    return probs_trn, probs_val, probs_tst
 
 def build_bald_tree(num_nodes, shuffle_nums=False):
     """

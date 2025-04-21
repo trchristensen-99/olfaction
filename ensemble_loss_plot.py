@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib
-# matplotlib.use('pdf')
+from scipy import stats
 import matplotlib.pyplot as plt
 import pickle
+import os
 
 def save_lists_to_file(lists, file_name):
     """
@@ -123,6 +124,22 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.show()
 
+    # Calculate variance between individual trees at each mutation step
+    single_gap_variance = []
+    single_gap_se = []
+
+    # For each timestep, calculate variance and SE across all trees
+    for i in range(min(len(tree_mse) for tree_mse in all_trees_mse_tst)):
+        # Get MSE values from all trees at this timestep
+        mse_values = [tree_mse[i] for tree_mse in all_trees_mse_tst]
+        
+        # Calculate variance and standard error
+        variance = np.var(mse_values)
+        se = np.std(mse_values) / np.sqrt(len(mse_values))
+        
+        single_gap_variance.append(variance)
+        single_gap_se.append(se)
+
     #Sort variance and standard error to plot
     zipped_lists = zip(single_gap_variance, single_gap_se)
     sorted_pairs = sorted(zipped_lists)
@@ -148,6 +165,8 @@ if __name__ == '__main__':
             verticalalignment='top')
 
     plt.tight_layout()
+    results_dir_path = "./results"
+    os.makedirs(results_dir_path, exist_ok=True)
     plt.savefig(os.path.join(results_dir_path, "variance.pdf"), format='pdf', dpi=300, bbox_inches='tight', pad_inches=0.1)
     plt.close()
     plt.clf()
