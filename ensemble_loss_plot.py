@@ -28,7 +28,7 @@ def load_lists_from_file(file_name):
 if __name__ == '__main__':
 
     #load ensemble data
-    ensemble_data = load_lists_from_file("filename".pkl")
+    ensemble_data = load_lists_from_file("filename.pkl")
     
     #save mse from ensemble data for training, validation, and testing data sets
     ensemble_mse_trn = []
