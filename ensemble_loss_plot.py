@@ -83,7 +83,12 @@ if __name__ == '__main__':
     plt.title('Ensemble Training Performance')
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.tight_layout()
+    results_dir_path = "./results"
+    os.makedirs(results_dir_path, exist_ok=True)
+    plt.savefig(os.path.join(results_dir_path, "ensemble_training_performance.pdf"), format='pdf', dpi=300, bbox_inches='tight', pad_inches=0.1)
+    plt.close()
+    plt.clf()
 
     #Create loss plot for validation 
     plt.figure(figsize=(10,6))
@@ -102,7 +107,12 @@ if __name__ == '__main__':
     plt.title('Ensemble Validation Performance')
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.tight_layout()
+    results_dir_path = "./results"
+    os.makedirs(results_dir_path, exist_ok=True)
+    plt.savefig(os.path.join(results_dir_path, "ensemble_validation_performance.pdf"), format='pdf', dpi=300, bbox_inches='tight', pad_inches=0.1)
+    plt.close()
+    plt.clf()
 
 
     #Create loss plot for testing
@@ -122,7 +132,12 @@ if __name__ == '__main__':
     plt.title('Ensemble Testing Performance')
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    plt.tight_layout()
+    results_dir_path = "./results"
+    os.makedirs(results_dir_path, exist_ok=True)
+    plt.savefig(os.path.join(results_dir_path, "ensemble_testing_performance.pdf"), format='pdf', dpi=300, bbox_inches='tight', pad_inches=0.1)
+    plt.close()
+    plt.clf()
 
     # Calculate variance between individual trees at each mutation step
     single_gap_variance = []
